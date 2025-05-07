@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - {{ super() }}{% endblock %}
+
+{% block content %}
+    <h1>Oops! Page Not Found (404)</h1>
+    <p>The page you are looking for does not exist or has been moved.</p>
+    <p><a href="{{ url_for('main.index') }}">Go back to Home</a></p>
+{% endblock %}

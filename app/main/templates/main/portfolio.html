@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ super() }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    {% if items %}
+        <ul>
+        {% for item in items %}
+            <li>
+                <h2>{{ item.title }}</h2>
+                <p>{{ item.description }}</p>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No portfolio items to display yet.</p>
+    {% endif %}
+{% endblock %}
