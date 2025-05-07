@@ -1,5 +1,6 @@
-from flask import render_template
+from flask import render_template, request
 from . import main # Import the blueprint instance
+from app.models import Post # Import the Post model
 
 @main.route('/')
 @main.route('/index')
@@ -23,9 +24,10 @@ def portfolio():
 @main.route('/blog')
 def blog():
     """Renders the blog page."""
-    # Replace with actual blog posts later
-    blog_posts = [
-        {'id': 1, 'title': 'My First Blog Post', 'date': '2025-05-01', 'excerpt': 'This is the beginning...'},
-        {'id': 2, 'title': 'Flask Tips', 'date': '2025-05-05', 'excerpt': 'Some useful tips for Flask dev.'}
-    ]
-    return render_template('main/blog.html', title='My Blog', posts=blog_posts)
+    # Fetch posts from the database, ordered by creation date (newest first)
+    page = request.args.get('page', 1, type=int) # For pagination later
+    posts = Post.query.order_by(Post.created_at.desc()).paginate(
+        page=page, per_page=5 # Adjust per_page as needed
+    )
+    # The old static blog_posts can be removed
+    return render_template('main/blog.html', title='My Blog', posts=posts) # Pass the paginate object

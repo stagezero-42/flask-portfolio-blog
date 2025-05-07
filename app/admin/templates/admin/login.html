@@ -1,0 +1,26 @@
+{% extends "base.html" %} {# Or a specific admin base template #}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }} {# For CSRF token #}
+        <p>
+            {{ form.username_or_email.label }}<br>
+            {{ form.username_or_email(size=32) }}<br>
+            {% for error in form.username_or_email.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.password.label }}<br>
+            {{ form.password(size=32) }}<br>
+            {% for error in form.password.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+</div>
+{% endblock %}

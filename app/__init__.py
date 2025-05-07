@@ -1,6 +1,6 @@
 from flask import Flask, render_template
 from .config import config
-from .extensions import db, migrate, csrf #, login_manager
+from .extensions import db, migrate, csrf,  login_manager
 
 def create_app(config_name='default'):
     """
@@ -15,11 +15,15 @@ def create_app(config_name='default'):
     db.init_app(app)
     migrate.init_app(app, db) # Initialize Flask-Migrate
     csrf.init_app(app) # Initialize CSRF protection
-    # login_manager.init_app(app) # If using Flask-Login
+    login_manager.init_app(app) # If using Flask-Login
 
     # Register Blueprints
     from .main import main as main_blueprint
     app.register_blueprint(main_blueprint)
+
+    # Register your new admin blueprint
+    from .admin import admin as admin_blueprint
+    app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
     # from .auth import auth as auth_blueprint # If you have an auth blueprint
     # app.register_blueprint(auth_blueprint, url_prefix='/auth')
