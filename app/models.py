@@ -30,9 +30,12 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(150), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # Uncomment and adjust if you want to link posts to users
-    # user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True) # Added index for sorting
+
+    # New field for category
+    # Possible values: 'blog', 'home', 'portfolio'
+    # Default to 'blog'
+    category = db.Column(db.String(50), nullable=False, default='blog', index=True)
 
     def __repr__(self):
         return f'<Post {self.title}>'

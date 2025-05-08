@@ -1,53 +1,254 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 
+{% block head_extra %}
+<style>
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .category-options-cell {
+        /* text-align: center; /* Or left, depending on preference */
+        white-space: nowrap; /* Prevents options from wrapping if cell is too narrow */
+        padding-left: 25px;  /* INCREASED padding here for space after Date column */
+    }
+    .category-option {
+        display: inline-flex;
+        align-items: center;
+        min-width: auto;
+    }
+    .category-option label {
+        font-weight: bold;
+        margin-right: 4px;
+    }
+    .category-option input[type="radio"] {
+        margin-top: 0;
+        vertical-align: middle;
+    }
+
+    /* Static CSS rules for spacing based on the classes we added in the loop */
+    .category-option-home {
+        margin-right: 8px; /* Space after H (before P) - Adjust as needed */
+    }
+    .category-option-portfolio {
+        margin-right: 8px; /* Space after P (before B) - Adjust as needed */
+    }
+    .category-option-blog {
+        margin-right: 0;  /* No extra margin after B, or a very small one if preferred */
+    }
+
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h1>{{ title }}</h1>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>{{ title }}</h1>
+        <a href="{{ url_for('admin.logout') }}" class="btn btn-info">Logout</a>
+    </div>
     <p>Welcome, {{ current_user.username }}!</p>
-    <p><a href="{{ url_for('admin.add_post') }}" class="btn btn-primary">Add New Blog Post</a></p>
+    <p><a href="{{ url_for('admin.add_post') }}" class="btn btn-primary mb-3">Add New Blog Post</a></p>
 
     <hr>
     <h2>Manage Existing Posts</h2>
-    {% if posts and posts.items %} {# Assuming pagination, adjust if not #}
-        <table class="table table-striped">
-            <thead>
+    {% if posts and posts.items %}
+        <table class="table table-striped table-hover">
+            <thead class="thead-light">
                 <tr>
                     <th>Title</th>
                     <th>Created At</th>
+                    <th style="text-align: center;">Category (Display As)</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for post in posts.items %}
-                <tr>
+                <tr data-post-id="{{ post.id }}">
                     <td>{{ post.title }}</td>
                     <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td class="category-options-cell">
+                        {# Added specific classes for margin control #}
+                        <div class="category-option category-option-home">
+                            <label class="form-check-label" for="cat_home_{{ post.id }}">H</label>
+                            <input class="form-check-input category-radio" type="radio" name="category_{{ post.id }}" id="cat_home_{{ post.id }}" value="home" title="Set as Home Page post" {% if post.category == 'home' %}checked{% endif %}>
+                        </div>
+                        <div class="category-option category-option-portfolio">
+                            <label class="form-check-label" for="cat_portfolio_{{ post.id }}">P</label>
+                            <input class="form-check-input category-radio" type="radio" name="category_{{ post.id }}" id="cat_portfolio_{{ post.id }}" value="portfolio" title="Set as Portfolio post" {% if post.category == 'portfolio' %}checked{% endif %}>
+                        </div>
+                        <div class="category-option category-option-blog"> {# No specific margin class needed if it's the last one #}
+                            <label class="form-check-label" for="cat_blog_{{ post.id }}">B</label>
+                            <input class="form-check-input category-radio" type="radio" name="category_{{ post.id }}" id="cat_blog_{{ post.id }}" value="blog" title="Set as Blog post" {% if post.category == 'blog' %}checked{% endif %}>
+                        </div>
+                    </td>
                     <td>
-                        <a href="{{ url_for('admin.edit_post', post_id=post.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                        {# Add a delete button later if needed #}
-                        {# <a href="{{ url_for('admin.delete_post', post_id=post.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this post?');">Delete</a> #}
+                        <a href="{{ url_for('admin.edit_post', post_id=post.id) }}" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
+                        <button type="button" class="btn btn-sm btn-outline-danger delete-post-btn"
+                                data-bs-toggle="modal" data-bs-target="#deleteConfirmModal"
+                                data-post-id="{{ post.id }}"
+                                data-post-title="{{ post.title }}"
+                                data-delete-url="{{ url_for('admin.delete_post', post_id=post.id) }}">
+                            Delete
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {# Pagination links for posts list #}
-        {% if posts.has_prev %}<a href="{{ url_for('admin.dashboard', page=posts.prev_num) }}">&laquo; Newer posts</a>{% endif %}
-        | Page {{ posts.page }} of {{ posts.pages }} |
-        {% if posts.has_next %}<a href="{{ url_for('admin.dashboard', page=posts.next_num) }}">Older posts &raquo;</a>{% endif %}
-    {% elif posts %} {# Handle case where posts might not be a pagination object but a simple list, though pagination is better #}
-        <p>No posts found.</p>
-        {% for post in posts %} <p>
-                {{ post.title }} -
-                <a href="{{ url_for('admin.edit_post', post_id=post.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-            </p>
-        {% endfor %}
-    {% else %}
-        <p>No blog posts yet. <a href="{{ url_for('admin.add_post') }}">Add one now!</a></p>
-    {% endif %}
 
-    <hr>
-    <p><a href="{{ url_for('admin.logout') }}" class="btn btn-info">Logout</a></p>
+        {# Pagination (same as before) #}
+        <nav aria-label="Posts navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not posts.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('admin.dashboard', page=posts.prev_num if posts.has_prev else 1) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                        {% if posts.page == page_num %}
+                        <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('admin.dashboard', page=page_num) }}">{{ page_num }}</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not posts.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('admin.dashboard', page=posts.next_num if posts.has_next else posts.pages) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            No blog posts yet. <a href="{{ url_for('admin.add_post') }}" class="alert-link">Add one now!</a>
+        </div>
+    {% endif %}
 </div>
+
+{# Delete Confirmation Modal (Bootstrap 5 - same as before) #}
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the post: <strong id="postNameToDeleteInModal"></strong>? This action cannot be undone.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deletePostFormInModal" method="POST" action=""> {# Action will be set by JS #}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}"/>
+            <button type="submit" class="btn btn-danger">Delete Post</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{# JavaScript (same as the previous version, no changes needed here for this layout modification) #}
+<script>
+// All JavaScript from the previous correct version remains unchanged.
+// The spacing adjustments are purely CSS and HTML structure based.
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfTokenElement = document.querySelector('input[name="csrf_token"]');
+    const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
+
+    // --- Category Update Logic ---
+    const categoryRadios = document.querySelectorAll('.category-radio');
+    categoryRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const postId = this.name.split('_')[1];
+            const newCategory = this.value;
+
+            if (!csrfToken) {
+                alert("A configuration error occurred (missing CSRF token). Please reload and try again.");
+                return;
+            }
+
+            fetch("{{ url_for('admin.set_post_category') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    post_id: postId,
+                    category: newCategory
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errData => { throw new Error(errData.error || `HTTP error! Status: ${response.status}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    if (newCategory === 'home' && data.old_home_post_id && data.old_home_post_id !== parseInt(postId)) {
+                        const oldHomeBlogRadio = document.querySelector(`#cat_blog_${data.old_home_post_id}`);
+                        if (oldHomeBlogRadio) {
+                            oldHomeBlogRadio.checked = true;
+                        }
+                    }
+                } else {
+                    alert('Error updating category: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('An error occurred: ' + error.message);
+            });
+        });
+    });
+
+    // --- Delete Post Modal Logic ---
+    const deleteConfirmModalElement = document.getElementById('deleteConfirmModal');
+    if (deleteConfirmModalElement) {
+        const postNameToDeleteSpan = document.getElementById('postNameToDeleteInModal');
+        const deletePostFormInModal = document.getElementById('deletePostFormInModal');
+
+        const deletePostButtons = document.querySelectorAll('.delete-post-btn');
+        deletePostButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const postTitle = this.dataset.postTitle;
+                const deleteUrl = this.dataset.deleteUrl;
+
+                if (postNameToDeleteSpan && deletePostFormInModal) {
+                    postNameToDeleteSpan.textContent = postTitle;
+                    deletePostFormInModal.action = deleteUrl;
+                }
+            });
+        });
+    } else {
+        // Fallback for delete if Bootstrap Modal JS isn't loaded
+        const deletePostButtons = document.querySelectorAll('.delete-post-btn');
+        deletePostButtons.forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                if (confirm('Are you sure you want to delete the post: ' + this.dataset.postTitle + '? This action cannot be undone.')) {
+                    const deleteUrl = this.dataset.deleteUrl;
+                    const tempForm = document.createElement('form');
+                    tempForm.method = 'POST';
+                    tempForm.action = deleteUrl;
+                    if (csrfToken) {
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = 'csrf_token';
+                        csrfInput.value = csrfToken;
+                        tempForm.appendChild(csrfInput);
+                    }
+                    document.body.appendChild(tempForm);
+                    tempForm.submit();
+                }
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

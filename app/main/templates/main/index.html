@@ -3,7 +3,17 @@
 {% block title %}Welcome - {{ super() }}{% endblock %}
 
 {% block content %}
-    <h1>Hello, Welcome to My Portfolio & Blog!</h1>
-    <p>This is the homepage built with Flask.</p>
+    {% if home_post %}
+        <article class="home-featured-post">
+            <h1>{{ home_post.title }}</h1>
+            <p><small>Posted on: {{ home_post.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
+            <div>{{ home_post.content | safe }}</div>
+        </article>
+    {% else %}
+        <h1>Hello, Welcome to My Portfolio & Blog!</h1>
+        <p>This is the homepage built with Flask.</p>
+        <p>No featured post has been set for the homepage yet, or no posts exist.</p>
+    {% endif %}
+    <hr>
     <p>Navigate using the links above to see the portfolio or blog sections.</p>
 {% endblock %}

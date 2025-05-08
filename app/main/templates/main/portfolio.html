@@ -4,15 +4,25 @@
 
 {% block content %}
     <h1>{{ title }}</h1>
-    {% if items %}
-        <ul>
-        {% for item in items %}
-            <li>
-                <h2>{{ item.title }}</h2>
-                <p>{{ item.description }}</p>
-            </li>
-        {% endfor %}
-        </ul>
+    {% if items and items.items %} {# items is a pagination object #}
+        <div class="portfolio-grid"> {# Optional: for better layout #}
+            {% for item in items.items %}
+                <article class="portfolio-item">
+                    <h2><a href="#">{{ item.title }}</a></h2> {# Link to a single post view later? #}
+                    <p><small>Posted on: {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
+                    {# Display excerpt or full content. Trix content will be HTML. #}
+                    <div>{{ item.content | safe | truncate(300, True) }}</div> {# Example: show an excerpt #}
+                    {# <a href="#">Read more...</a> #}
+                </article>
+                <hr>
+            {% endfor %}
+        </div>
+
+        {# Pagination links #}
+        {% if items.has_prev %}<a href="{{ url_for('main.portfolio', page=items.prev_num) }}">&laquo; Previous</a>{% endif %}
+        | Page {{ items.page }} of {{ items.pages }} |
+        {% if items.has_next %}<a href="{{ url_for('main.portfolio', page=items.next_num) }}">Next &raquo;</a>{% endif %}
+
     {% else %}
         <p>No portfolio items to display yet.</p>
     {% endif %}

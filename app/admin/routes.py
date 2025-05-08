@@ -4,7 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename  # For securing filenames
 from . import admin  # Import the blueprint
 from .forms import LoginForm, PostForm
-from app.models import User, Post
+from app.models import User, Post, db
 from app import db, csrf  # Import csrf
 
 # Helper function to check allowed file extensions (optional, but good practice)
@@ -98,6 +98,116 @@ def edit_post(post_id):
 
     return render_template('admin/edit_post.html', title=f'Edit Post: "{post.title}"', form=form, post_id=post.id)
 
+
+def _get_current_home_post():
+    return Post.query.filter_by(category='home').first()
+
+
+def _set_new_home_post(new_home_post):
+    if not new_home_post:
+        return None, None
+
+    old_home_post = _get_current_home_post()
+    old_home_post_id_for_js = None
+
+    if old_home_post and old_home_post.id != new_home_post.id:
+        old_home_post.category = 'blog'  # Revert old home post to 'blog'
+        db.session.add(old_home_post)
+        old_home_post_id_for_js = old_home_post.id
+
+    new_home_post.category = 'home'
+    db.session.add(new_home_post)
+    return new_home_post, old_home_post_id_for_js
+
+
+@admin.route('/set_post_category', methods=['POST'])
+@login_required
+# @csrf.exempt # If you are sending CSRF token via X-CSRFToken header with AJAX
+# Or ensure your Flask-WTF setup handles CSRF for JSON AJAX requests
+def set_post_category():
+    data = request.get_json()
+    post_id = data.get('post_id')
+    new_category = data.get('category')
+
+    if not all([post_id, new_category]):
+        return jsonify({'success': False, 'error': 'Missing data'}), 400
+
+    post = Post.query.get(post_id)
+    if not post:
+        return jsonify({'success': False, 'error': 'Post not found'}), 404
+
+    if new_category not in ['home', 'portfolio', 'blog']:
+        return jsonify({'success': False, 'error': 'Invalid category'}), 400
+
+    old_home_post_id_for_js = None  # For JS to update UI
+
+    try:
+        if new_category == 'home':
+            _, old_home_post_id_for_js = _set_new_home_post(post)
+        else:
+            # If this post was 'home' and is now changing, ensure a new home post is designated
+            if post.category == 'home':
+                post.category = new_category  # Change it first
+                # Designate the most recent overall post as the new home post if no other is 'home'
+                # This logic will be more robustly handled by ensure_home_post_exists
+            else:
+                post.category = new_category
+            db.session.add(post)
+
+        db.session.commit()
+        # Ensure there's always a home post after any change
+        ensure_home_post_exists(excluded_post_id=post.id if new_category != 'home' else None)
+
+        return jsonify({'success': True, 'new_category': post.category, 'old_home_post_id': old_home_post_id_for_js})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating category for post {post_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Helper function to ensure a home post exists
+def ensure_home_post_exists(excluded_post_id=None):
+    """
+    Ensures that at least one post is marked as 'home'.
+    If no 'home' post exists, it marks the most recent post as 'home'.
+    If excluded_post_id is provided (e.g., a post just changed from 'home' to something else),
+    it avoids selecting that one as the new 'home' post in the same transaction if possible.
+    """
+    current_home = Post.query.filter_by(category='home').first()
+    if not current_home:
+        query = Post.query.order_by(Post.created_at.desc())
+        if excluded_post_id:
+            # Try to find a post that isn't the one just changed from home
+            new_home_candidate = query.filter(Post.id != excluded_post_id).first()
+            if not new_home_candidate: # If only one post exists and it was the one changed
+                 new_home_candidate = query.first() # Fallback to it
+        else:
+            new_home_candidate = query.first()
+
+        if new_home_candidate:
+            # No need to call _set_new_home_post as this is a fallback
+            new_home_candidate.category = 'home'
+            db.session.add(new_home_candidate)
+            db.session.commit()
+            current_app.logger.info(f"No home post found. Designated post ID {new_home_candidate.id} as new home post.")
+
+@admin.route('/delete_post/<int:post_id>', methods=['POST'])  # Only allow POST requests
+@login_required
+def delete_post(post_id):
+    post_to_delete = Post.query.get_or_404(post_id)
+    was_home_post = (post_to_delete.category == 'home')
+    try:
+        db.session.delete(post_to_delete)
+        db.session.commit()
+        flash(f'Post "{post_to_delete.title}" has been deleted successfully.', 'success')
+        if was_home_post:
+            ensure_home_post_exists() # Ensure a new home post is selected
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of error
+        flash(f'Error deleting post: {str(e)}', 'danger')
+        current_app.logger.error(f"Error deleting post {post_id}: {e}")
+
+    return redirect(url_for('admin.dashboard'))
 
 # Route to handle Trix file uploads
 @admin.route('/upload_trix_attachment', methods=['POST'])

@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Flask App{% endblock %}</title>
+    {# Your existing CSS #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {# Bootstrap 5 CSS (example) - MAKE SURE THIS IS COMPATIBLE WITH JS VERSION #}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -51,6 +54,8 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    {% block scripts_extra %}{% endblock %}
+    {# Bootstrap 5 JS Bundle (includes Popper) - MAKE SURE THIS IS COMPATIBLE WITH CSS VERSION #}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    {% block scripts_extra %}{% endblock %} {# Your page-specific scripts like the dashboard logic #}
 </body>
 </html>
