@@ -26,16 +26,20 @@ class User(UserMixin, db.Model): # Add UserMixin
     def __repr__(self):
         return f'<User {self.username}>'
 
+
 class Post(db.Model):
+    # ... (existing fields)
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(150), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True) # Added index for sorting
-
-    # New field for category
-    # Possible values: 'blog', 'home', 'portfolio'
-    # Default to 'blog'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     category = db.Column(db.String(50), nullable=False, default='blog', index=True)
+
+    # New fields
+    first_image_url = db.Column(db.String(255), nullable=True)  # To store URL of the first image in post
+    thumbnail_url = db.Column(db.String(255), nullable=True)  # To store URL of the generated thumbnail
+
+    # excerpt = db.Column(db.Text, nullable=True) # Optional: for a manually/auto-generated excerpt
 
     def __repr__(self):
         return f'<Post {self.title}>'

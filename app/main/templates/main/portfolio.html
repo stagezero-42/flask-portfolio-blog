@@ -2,26 +2,114 @@
 
 {% block title %}{{ title }} - {{ super() }}{% endblock %}
 
+{% block head_extra %}
+<style>
+    .portfolio-entry {
+        display: flex; /* Use flexbox for layout */
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #eee;
+    }
+    .portfolio-thumbnail-container {
+        flex-shrink: 0; /* Prevent thumbnail from shrinking */
+        margin-right: 15px;
+        width: 150px; /* Example fixed width, adjust as needed */
+        /* Height will be controlled by the image or CSS */
+    }
+    .portfolio-thumbnail-container img {
+        width: 100%;
+        height: auto; /* Maintain aspect ratio */
+        max-height: 120px; /* Approximate height for title + 5 lines, adjust this! */
+        object-fit: cover; /* Crop image to fit if aspect ratio differs significantly */
+        border: 1px solid #ddd;
+    }
+    .portfolio-content {
+        flex-grow: 1; /* Allow content to take remaining space */
+    }
+    .portfolio-content h2 a {
+        text-decoration: none;
+        color: #333;
+    }
+    .portfolio-content h2 a:hover {
+        color: #007bff;
+    }
+    .portfolio-excerpt {
+        font-size: 0.9em;
+        color: #555;
+        white-space: pre-line; /* Respect newlines from the excerpt function */
+        line-height: 1.4;
+        /* You might want to limit the height of this block too if text is very long */
+        /* max-height: 100px; /* Corresponds to roughly 5 lines with 1.4 line-height and padding */
+        /* overflow: hidden; */
+    }
+    .no-thumbnail-placeholder {
+        width: 150px; /* Same as thumbnail width */
+        height: 100px; /* Approximate height */
+        background-color: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #aaa;
+        font-size: 0.8em;
+        margin-right: 15px; /* Keep spacing consistent */
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <h1>{{ title }}</h1>
-    {% if items and items.items %} {# items is a pagination object #}
-        <div class="portfolio-grid"> {# Optional: for better layout #}
-            {% for item in items.items %}
-                <article class="portfolio-item">
-                    <h2><a href="#">{{ item.title }}</a></h2> {# Link to a single post view later? #}
-                    <p><small>Posted on: {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
-                    {# Display excerpt or full content. Trix content will be HTML. #}
-                    <div>{{ item.content | safe | truncate(300, True) }}</div> {# Example: show an excerpt #}
-                    {# <a href="#">Read more...</a> #}
+    {% if items_with_details %}
+        <div class="portfolio-grid">
+            {% for item_detail in items_with_details %}
+                <article class="portfolio-entry">
+                    {% if item_detail.post.thumbnail_url %}
+                        <div class="portfolio-thumbnail-container">
+                            <a href="{{ url_for('main.view_post', post_id=item_detail.post.id) }}">
+                                <img src="{{ item_detail.post.thumbnail_url }}" alt="{{ item_detail.post.title }} thumbnail">
+                            </a>
+                        </div>
+                    {% else %}
+                        {# Optional: Placeholder if no thumbnail #}
+                        {% endif %}
+
+                    <div class="portfolio-content">
+                        <h2><a href="{{ url_for('main.view_post', post_id=item_detail.post.id) }}">{{ item_detail.post.title }}</a></h2>
+                        <p><small>Posted on: {{ item_detail.post.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
+                        <div class="portfolio-excerpt">
+                            {{ item_detail.excerpt }}
+                        </div>
+                    </div>
                 </article>
-                <hr>
             {% endfor %}
         </div>
 
-        {# Pagination links #}
-        {% if items.has_prev %}<a href="{{ url_for('main.portfolio', page=items.prev_num) }}">&laquo; Previous</a>{% endif %}
-        | Page {{ items.page }} of {{ items.pages }} |
-        {% if items.has_next %}<a href="{{ url_for('main.portfolio', page=items.next_num) }}">Next &raquo;</a>{% endif %}
+        {# Pagination links using the pagination object directly #}
+        <nav aria-label="Portfolio navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not items_pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.portfolio', page=items_pagination.prev_num if items_pagination.has_prev else 1) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% for page_num in items_pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                        {% if items_pagination.page == page_num %}
+                        <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('main.portfolio', page=page_num) }}">{{ page_num }}</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not items_pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.portfolio', page=items_pagination.next_num if items_pagination.has_next else items_pagination.pages) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
 
     {% else %}
         <p>No portfolio items to display yet.</p>
