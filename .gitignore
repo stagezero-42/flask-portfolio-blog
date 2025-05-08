@@ -1,3 +1,7 @@
+# Ignore user-uploaded media files
+app/static/media_files/
+
+
 # Byte-compiled / optimized / DLL files
 *.DS_Store  # macOS specific
 .idea/       # PyCharm specific – crucial!

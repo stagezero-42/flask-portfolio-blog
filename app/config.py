@@ -15,6 +15,10 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(project_root, 'instance', 'app.db')
 
+    # Configuration for uploaded media files
+    UPLOAD_FOLDER = os.path.join(project_root, 'app', 'static', 'media_files')
+    MEDIA_FILES_URL = '/static/media_files/'                        # URL path to access these files
+
     @staticmethod
     def init_app(app):
         # Create the instance folder if it doesn't exist when using SQLite
@@ -26,6 +30,16 @@ class Config:
                     print(f"Instance folder created at {instance_path}")
                 except OSError as e:
                     print(f"Error creating instance folder: {e}")
+
+        # Create the media files folder if it doesn't exist
+        media_folder_path = app.config['UPLOAD_FOLDER']
+        if not os.path.exists(media_folder_path):
+            try:
+                os.makedirs(media_folder_path)
+                print(f"Media files folder created at {media_folder_path}")
+            except OSError as e:
+                print(f"Error creating media files folder: {e}")
+
         pass
 
 class DevelopmentConfig(Config):

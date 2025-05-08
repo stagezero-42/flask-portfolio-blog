@@ -1,26 +1,159 @@
 {% extends "base.html" %} {# Or a specific admin base template #}
 {% block title %}{{ title }}{% endblock %}
 
+{% block head_extra %}
+{# Add Trix CSS - From GitHub Trix page #}
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.8/dist/trix.css">
+<style>
+/* Ensure Trix editor takes up reasonable space */
+  trix-editor {
+    min-height: 300px; /* Adjust as needed */
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <h2>{{ title }}</h2>
-    <form method="POST" action="">
+    <form method="POST" action="" enctype="multipart/form-data"> {# Added enctype for potential direct uploads, though Trix handles via JS #}
         {{ form.hidden_tag() }} {# For CSRF token #}
         <p>
             {{ form.title.label }}<br>
-            {{ form.title(size=60) }}<br>
+            {{ form.title(size=60, class="form-control") }}<br>
             {% for error in form.title.errors %}
             <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
         </p>
         <p>
             {{ form.content.label }}<br>
-            {{ form.content(rows=10, cols=60) }}<br>
+            {# The hidden input now has id="content" which matches the label's "for" attribute #}
+            <input id="content" type="hidden" name="content" value="{{ form.content.data if form.content.data else '' }}">
+            {# The trix-editor's input attribute now points to "content" #}
+            <trix-editor input="content" class="trix-content"></trix-editor><br>
             {% for error in form.content.errors %}
             <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
         </p>
-        <p>{{ form.submit() }}</p>
+        <p>{{ form.submit(class="btn btn-primary") }}</p>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+{# Add Trix JavaScript - From GitHub Trix page #}
+<script type="text/javascript" src="https://unpkg.com/trix@2.0.8/dist/trix.umd.min.js"></script>
+<script>
+// FAULT FINDING: Trix Attachment Handling
+// If image/file attachments stop working, uncomment the console.log statements below
+// to trace the execution flow in your browser's developer console.
+
+document.addEventListener("trix-attachment-add", function(event) {
+  // console.log("Trix attachment add event fired:", event);
+  if (event.attachment.file) {
+    // console.log("Attachment has a file:", event.attachment.file);
+    uploadFileAttachment(event.attachment);
+  } else {
+    // console.log("Attachment has no file property (e.g., for existing attachments):", event.attachment);
+  }
+});
+
+function uploadFileAttachment(attachment) {
+  // console.log("uploadFileAttachment called with:", attachment);
+  var formData = new FormData();
+  formData.append("file", attachment.file);
+
+  // FAULT FINDING: CSRF Token
+  // If uploads fail with a 400/403 error, check if the CSRF token is correctly found and appended.
+  var csrfTokenInput = document.querySelector('input[name="csrf_token"]');
+  if (csrfTokenInput) {
+      // console.log("CSRF token found:", csrfTokenInput.value);
+      formData.append("csrf_token", csrfTokenInput.value);
+  } else {
+      // console.warn("CSRF token input not found. Ensure your form includes {{ form.hidden_tag() }} or a manual CSRF token input.");
+  }
+
+  var xhr = new XMLHttpRequest();
+  // FAULT FINDING: Upload URL
+  // Verify that this URL is correct and matches a route in your Flask app.
+  var uploadUrl = "{{ url_for('admin.upload_trix_attachment') }}";
+  // console.log("XHR request will be opened to:", uploadUrl);
+  xhr.open("POST", uploadUrl, true);
+
+  xhr.onload = function() {
+    // console.log("XHR onload triggered. Status:", xhr.status);
+    if (xhr.status === 200) {
+      try {
+        var response = JSON.parse(xhr.responseText);
+        // console.log("Upload successful. Response:", response);
+        // FAULT FINDING: Server Response
+        // Ensure 'response.url' exists and is the correct URL for the uploaded file.
+        if (response.url) {
+          attachment.setAttributes({
+            url: response.url,
+            href: response.url
+          });
+        } else {
+          // console.error("Upload response missing 'url'. Response:", xhr.responseText);
+          attachment.remove();
+          alert("File upload succeeded but the server response was invalid.");
+        }
+      } catch (e) {
+        // console.error("Error parsing JSON response:", e, "Raw response:", xhr.responseText);
+        attachment.remove();
+        alert("File upload succeeded but an error occurred processing the server response.");
+      }
+    } else {
+      // FAULT FINDING: Server-Side Upload Error
+      // Check the Network tab for the response body from the server.
+      // Also check your Flask application logs for errors in the 'upload_trix_attachment' route.
+      // console.error("Upload failed. Status:", xhr.status, "Response:", xhr.responseText);
+      attachment.remove();
+      alert("File upload failed. Status: " + xhr.status + ". Please check server logs or try again.");
+    }
+  };
+
+  xhr.upload.onprogress = function(event) {
+    if (event.lengthComputable) {
+      var progress = (event.loaded / event.total) * 100;
+      attachment.setUploadProgress(progress);
+    }
+  };
+
+  xhr.onerror = function () {
+    // FAULT FINDING: Network Error
+    // This usually indicates a network issue (e.g., server down, DNS problem, CORS if applicable).
+    // console.error("XHR onerror triggered. A network error occurred during upload.");
+    attachment.remove();
+    alert("File upload failed due to a network error. Please check your connection and the server status.");
+  };
+
+  // console.log("Sending XHR request with formData...");
+  // To inspect FormData content (can be tricky as it's not directly loggable):
+  // for (var pair of formData.entries()) {
+  //    console.log("FormData entry: " + pair[0]+ ', ' + pair[1]);
+  // }
+  xhr.send(formData);
+}
+
+// FAULT FINDING: Trix Event Flow
+// The 'trix-file-accept' event fires before 'trix-attachment-add'.
+// If 'trix-attachment-add' is not firing, it might be because 'trix-file-accept'
+// had event.preventDefault() called, or Trix is rejecting the file for some reason.
+document.addEventListener('trix-file-accept', function(event) {
+  // console.log("Trix file accept event fired (no preventDefault):", event);
+  // DO NOT call event.preventDefault() here if you want trix-attachment-add to fire for custom handling.
+  // You would only use event.preventDefault() here if you wanted to inspect the file
+  // and reject it *before* Trix creates an attachment object for it.
+  // Example:
+  // if (!event.file.type.startsWith("image/")) {
+  //   console.log("File is not an image, preventing attachment:", event.file.name);
+  //   event.preventDefault();
+  //   alert("Only image files can be uploaded.");
+  // }
+});
+
+</script>
 {% endblock %}
