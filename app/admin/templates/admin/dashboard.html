@@ -5,7 +5,49 @@
 <div class="container">
     <h1>{{ title }}</h1>
     <p>Welcome, {{ current_user.username }}!</p>
-    <p><a href="{{ url_for('admin.add_post') }}">Add New Blog Post</a></p>
-    <p><a href="{{ url_for('admin.logout') }}">Logout</a></p>
+    <p><a href="{{ url_for('admin.add_post') }}" class="btn btn-primary">Add New Blog Post</a></p>
+
+    <hr>
+    <h2>Manage Existing Posts</h2>
+    {% if posts and posts.items %} {# Assuming pagination, adjust if not #}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts.items %}
+                <tr>
+                    <td>{{ post.title }}</td>
+                    <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_post', post_id=post.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        {# Add a delete button later if needed #}
+                        {# <a href="{{ url_for('admin.delete_post', post_id=post.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this post?');">Delete</a> #}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {# Pagination links for posts list #}
+        {% if posts.has_prev %}<a href="{{ url_for('admin.dashboard', page=posts.prev_num) }}">&laquo; Newer posts</a>{% endif %}
+        | Page {{ posts.page }} of {{ posts.pages }} |
+        {% if posts.has_next %}<a href="{{ url_for('admin.dashboard', page=posts.next_num) }}">Older posts &raquo;</a>{% endif %}
+    {% elif posts %} {# Handle case where posts might not be a pagination object but a simple list, though pagination is better #}
+        <p>No posts found.</p>
+        {% for post in posts %} <p>
+                {{ post.title }} -
+                <a href="{{ url_for('admin.edit_post', post_id=post.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            </p>
+        {% endfor %}
+    {% else %}
+        <p>No blog posts yet. <a href="{{ url_for('admin.add_post') }}">Add one now!</a></p>
+    {% endif %}
+
+    <hr>
+    <p><a href="{{ url_for('admin.logout') }}" class="btn btn-info">Logout</a></p>
 </div>
 {% endblock %}

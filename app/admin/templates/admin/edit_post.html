@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.8/dist/trix.css">
+<style>
+  trix-editor {
+    min-height: 300px;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+    {# The form action will point to the same edit_post URL, including the post_id #}
+    <form method="POST" action="{{ url_for('admin.edit_post', post_id=post_id) }}" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.title.label }}<br>
+            {{ form.title(size=60, class="form-control") }}<br>
+            {% for error in form.title.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.content.label }}<br>
+            {# The hidden input's value is pre-populated by the form object in the route #}
+            <input id="content" type="hidden" name="content" value="{{ form.content.data if form.content.data else '' }}">
+            <trix-editor input="content" class="trix-content"></trix-editor><br>
+            {% for error in form.content.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.submit(value='Update Post', class="btn btn-primary") }} {# Changed button text #}
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </p>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script type="text/javascript" src="https://unpkg.com/trix@2.0.8/dist/trix.umd.min.js"></script>
+<script>
+// FAULT FINDING: Trix Attachment Handling (comments omitted for brevity, keep them from your add_post.html)
+document.addEventListener("trix-attachment-add", function(event) {
+  if (event.attachment.file) {
+    uploadFileAttachment(event.attachment);
+  }
+});
+
+function uploadFileAttachment(attachment) {
+  var formData = new FormData();
+  formData.append("file", attachment.file);
+  var csrfTokenInput = document.querySelector('input[name="csrf_token"]');
+  if (csrfTokenInput) {
+      formData.append("csrf_token", csrfTokenInput.value);
+  } else {
+      // console.warn("CSRF token input not found.");
+  }
+  var xhr = new XMLHttpRequest();
+  var uploadUrl = "{{ url_for('admin.upload_trix_attachment') }}";
+  xhr.open("POST", uploadUrl, true);
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try {
+        var response = JSON.parse(xhr.responseText);
+        if (response.url) {
+          attachment.setAttributes({
+            url: response.url,
+            href: response.url 
+          });
+        } else {
+          attachment.remove();
+          alert("File upload succeeded but the server response was invalid.");
+        }
+      } catch (e) {
+        attachment.remove();
+        alert("File upload succeeded but an error occurred processing the server response.");
+      }
+    } else {
+      attachment.remove(); 
+      alert("File upload failed. Status: " + xhr.status);
+    }
+  };
+  xhr.upload.onprogress = function(event) {
+    if (event.lengthComputable) {
+      var progress = (event.loaded / event.total) * 100;
+      attachment.setUploadProgress(progress);
+    }
+  };
+  xhr.onerror = function () {
+    attachment.remove();
+    alert("File upload failed due to a network error.");
+  };
+  xhr.send(formData);
+}
+
+document.addEventListener('trix-file-accept', function(event) {
+  // console.log("Trix file accept event fired (no preventDefault):", event);
+});
+</script>
+{% endblock %}
