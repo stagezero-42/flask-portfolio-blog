@@ -24,20 +24,20 @@ def allowed_file(filename):
 
 
 def create_thumbnail(image_path, thumbnail_path, height):
-    current_app.logger.debug(f"create_thumbnail: Attempting for {image_path} -> {thumbnail_path} with height {height}")
+    # current_app.logger.debug(f"create_thumbnail: Attempting for {image_path} -> {thumbnail_path} with height {height}")
     try:
         if not os.path.exists(image_path):
-            current_app.logger.error(f"create_thumbnail: Original image file not found at {image_path}")
+            # current_app.logger.error(f"create_thumbnail: Original image file not found at {image_path}")
             return False
         img = Image.open(image_path)
-        current_app.logger.debug(f"create_thumbnail: Image opened: {image_path}")
+        # current_app.logger.debug(f"create_thumbnail: Image opened: {image_path}")
 
         aspect_ratio = img.width / img.height
         new_width = int(aspect_ratio * height)
 
         img.thumbnail((new_width, height))
         img.save(thumbnail_path)  # This will overwrite if thumb_path already exists from a previous attempt
-        current_app.logger.debug(f"create_thumbnail: Thumbnail saved: {thumbnail_path}")
+        # current_app.logger.debug(f"create_thumbnail: Thumbnail saved: {thumbnail_path}")
         return True
     except FileNotFoundError:  # Should be caught by os.path.exists above, but good to keep
         current_app.logger.error(f"create_thumbnail: Original image file not found (again?) at {image_path}")
@@ -49,7 +49,7 @@ def create_thumbnail(image_path, thumbnail_path, height):
 
 # Modified: extract_first_image_and_generate_thumbnail - NOW EXPECTS THUMBNAIL TO EXIST
 def extract_first_image_and_get_urls(post_content, post_id_for_logging):
-    current_app.logger.debug(f"extract_first_image_and_get_urls: Called for post_id (context): {post_id_for_logging}")
+    # current_app.logger.debug(f"extract_first_image_and_get_urls: Called for post_id (context): {post_id_for_logging}")
     # current_app.logger.debug(f"extract_first_image_and_get_urls: Raw post_content: {post_content[:500]}...")
 
     soup = BeautifulSoup(post_content, 'html.parser')
@@ -59,9 +59,9 @@ def extract_first_image_and_get_urls(post_content, post_id_for_logging):
     derived_thumbnail_url = None  # URL for the pre-generated thumbnail
 
     if first_img_tag:
-        current_app.logger.debug(f"extract_first_image_and_get_urls: Found <img> tag: {first_img_tag}")
+        # current_app.logger.debug(f"extract_first_image_and_get_urls: Found <img> tag: {first_img_tag}")
         original_image_url_from_content = first_img_tag.get('src')
-        current_app.logger.debug(f"extract_first_image_and_get_urls: Extracted src: {original_image_url_from_content}")
+        # current_app.logger.debug(f"extract_first_image_and_get_urls: Extracted src: {original_image_url_from_content}")
 
         if original_image_url_from_content:
             media_url_path_segment = url_for('static', filename='media_files/', _external=False)
@@ -74,7 +74,7 @@ def extract_first_image_and_get_urls(post_content, post_id_for_logging):
                     f"extract_first_image_and_get_urls: Error parsing original_image_url_from_content: {e}")
                 path_from_url = original_image_url_from_content  # Fallback
 
-            current_app.logger.debug(f"extract_first_image_and_get_urls: path_from_url for original: {path_from_url}")
+            # current_app.logger.debug(f"extract_first_image_and_get_urls: path_from_url for original: {path_from_url}")
 
             if path_from_url and path_from_url.startswith(media_url_path_segment):
                 original_image_filename_from_url = os.path.basename(path_from_url)
@@ -88,8 +88,8 @@ def extract_first_image_and_get_urls(post_content, post_id_for_logging):
                 base, ext = os.path.splitext(original_image_filename_from_url)
                 thumb_filename = f"{base}_thumb{ext}"
                 thumb_filepath_on_disk = os.path.join(upload_folder, thumb_filename)
-                current_app.logger.debug(
-                    f"extract_first_image_and_get_urls: Expected thumbnail filepath: {thumb_filepath_on_disk}")
+                # current_app.logger.debug(
+                #     f"extract_first_image_and_get_urls: Expected thumbnail filepath: {thumb_filepath_on_disk}")
 
                 if os.path.exists(thumb_filepath_on_disk):
                     derived_thumbnail_url = url_for('static', filename=f'media_files/{thumb_filename}',
@@ -159,7 +159,7 @@ def dashboard():
 def add_post():
     form = PostForm()
     if form.validate_on_submit():
-        current_app.logger.debug("add_post: Form validated.")
+        # current_app.logger.debug("add_post: Form validated.")
         new_post = Post(title=form.title.data, content=form.content.data)
 
         # Use the modified function name
@@ -168,12 +168,12 @@ def add_post():
         new_post.first_image_url = first_img_url_in_content  # This is the URL from the <img> src
         new_post.thumbnail_url = actual_thumb_url  # This is the URL for the _thumb.jpg
 
-        current_app.logger.debug(
-            f"add_post: To be saved: first_image_url='{new_post.first_image_url}', thumbnail_url='{new_post.thumbnail_url}'")
+        # current_app.logger.debug(
+        #     f"add_post: To be saved: first_image_url='{new_post.first_image_url}', thumbnail_url='{new_post.thumbnail_url}'")
 
         db.session.add(new_post)
         db.session.commit()
-        current_app.logger.debug("add_post: Post committed to DB.")
+        # current_app.logger.debug("add_post: Post committed to DB.")
         flash('Blog post created successfully!', 'success')
         return redirect(url_for('main.blog'))  # Or admin.dashboard
     return render_template('admin/add_post.html', title='Add New Post', form=form)
@@ -186,7 +186,7 @@ def edit_post(post_id):
     form = PostForm(obj=post)
 
     if form.validate_on_submit():
-        current_app.logger.debug(f"edit_post ({post_id}): Form validated.")
+        # current_app.logger.debug(f"edit_post ({post_id}): Form validated.")
         post.title = form.title.data
         post.content = form.content.data
 
@@ -196,11 +196,11 @@ def edit_post(post_id):
         post.first_image_url = first_img_url_in_content
         post.thumbnail_url = actual_thumb_url
 
-        current_app.logger.debug(
-            f"edit_post ({post_id}): To be saved: first_image_url='{post.first_image_url}', thumbnail_url='{post.thumbnail_url}'")
+        # current_app.logger.debug(
+        #     f"edit_post ({post_id}): To be saved: first_image_url='{post.first_image_url}', thumbnail_url='{post.thumbnail_url}'")
 
         db.session.commit()
-        current_app.logger.debug(f"edit_post ({post_id}): Post committed to DB.")
+        # current_app.logger.debug(f"edit_post ({post_id}): Post committed to DB.")
         flash('Blog post updated successfully!', 'success')
         return redirect(url_for('admin.dashboard'))
     return render_template('admin/edit_post.html', title=f'Edit Post: "{post.title}"', form=form, post_id=post.id)

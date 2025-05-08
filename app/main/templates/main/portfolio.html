@@ -5,54 +5,68 @@
 {% block head_extra %}
 <style>
     .portfolio-entry {
-        display: flex; /* Use flexbox for layout */
+        display: flex;
         margin-bottom: 20px;
         padding-bottom: 20px;
         border-bottom: 1px solid #eee;
     }
     .portfolio-thumbnail-container {
-        flex-shrink: 0; /* Prevent thumbnail from shrinking */
+        flex-shrink: 0;
         margin-right: 15px;
-        width: 150px; /* Example fixed width, adjust as needed */
-        /* Height will be controlled by the image or CSS */
+        width: 150px; /* Adjust as needed */
     }
     .portfolio-thumbnail-container img {
         width: 100%;
-        height: auto; /* Maintain aspect ratio */
-        max-height: 120px; /* Approximate height for title + 5 lines, adjust this! */
-        object-fit: cover; /* Crop image to fit if aspect ratio differs significantly */
+        height: auto;
+        max-height: 120px; /* Adjust this to match your desired visual balance */
+        object-fit: cover;
         border: 1px solid #ddd;
     }
     .portfolio-content {
-        flex-grow: 1; /* Allow content to take remaining space */
+        flex-grow: 1;
     }
+
+    .portfolio-title-line {
+        display: flex; /* Use flex to align title and date */
+        align-items: baseline; /* Aligns text along their baseline */
+        flex-wrap: wrap; /* Allow wrapping if screen is too narrow */
+        margin-bottom: 0.5em; /* Space between title/date line and excerpt */
+    }
+
+     .portfolio-content h2 {
+        font-size: 1em;
+        margin-top: 0;
+        margin-bottom: 0;
+        margin-right: 10px;
+        /* H2 elements are often bold by default, but explicitly setting it ensures it */
+        font-weight: bold;
+    }
+
     .portfolio-content h2 a {
         text-decoration: none;
-        color: #333;
+        font-weight: bold; /* Ensure the link itself is bold */
+        color: #0056b3; /* A nice shade of blue (Bootstrap's primary blue, for example) */
+                        /* You can also use a simpler 'blue' or any hex code like #1a0dab */
     }
+
     .portfolio-content h2 a:hover {
-        color: #007bff;
+        color: #007bff;  /* A slightly darker blue for hover, or keep it the same as non-hover if preferred */
+                        /* Or you can use: text-decoration: underline; */
+    }
+
+    .portfolio-date {
+        font-size: 0.85em; /* Or whatever size your original 'small' tag for date was */
+        color: #777;
+        white-space: nowrap; /* Prevent date from wrapping */
     }
     .portfolio-excerpt {
         font-size: 0.9em;
         color: #555;
-        white-space: pre-line; /* Respect newlines from the excerpt function */
-        line-height: 1.4;
-        /* You might want to limit the height of this block too if text is very long */
-        /* max-height: 100px; /* Corresponds to roughly 5 lines with 1.4 line-height and padding */
-        /* overflow: hidden; */
+        line-height: 1.5; /* Increased for readability of sentences */
     }
+    /* Optional: if no thumbnail */
     .no-thumbnail-placeholder {
-        width: 150px; /* Same as thumbnail width */
-        height: 100px; /* Approximate height */
-        background-color: #f0f0f0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #aaa;
-        font-size: 0.8em;
-        margin-right: 15px; /* Keep spacing consistent */
-        flex-shrink: 0;
+        /* ... (your existing styles if you use this) ... */
     }
 </style>
 {% endblock %}
@@ -70,12 +84,14 @@
                             </a>
                         </div>
                     {% else %}
-                        {# Optional: Placeholder if no thumbnail #}
                         {% endif %}
 
                     <div class="portfolio-content">
-                        <h2><a href="{{ url_for('main.view_post', post_id=item_detail.post.id) }}">{{ item_detail.post.title }}</a></h2>
-                        <p><small>Posted on: {{ item_detail.post.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
+                        <div class="portfolio-title-line">
+                            <h2><a href="{{ url_for('main.view_post', post_id=item_detail.post.id) }}">{{ item_detail.post.title }}</a></h2>
+                            <span class="portfolio-date">{{ item_detail.post.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        {# No image caption or size info here about the thumbnail #}
                         <div class="portfolio-excerpt">
                             {{ item_detail.excerpt }}
                         </div>
@@ -84,7 +100,8 @@
             {% endfor %}
         </div>
 
-        {# Pagination links using the pagination object directly #}
+        {# Pagination links #}
+        {% if items_pagination and (items_pagination.has_prev or items_pagination.has_next) %}
         <nav aria-label="Portfolio navigation">
             <ul class="pagination justify-content-center">
                 <li class="page-item {% if not items_pagination.has_prev %}disabled{% endif %}">
@@ -110,6 +127,7 @@
                 </li>
             </ul>
         </nav>
+        {% endif %}
 
     {% else %}
         <p>No portfolio items to display yet.</p>
