@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .icon-preview { width: 32px; height: 32px; margin-right: 10px; vertical-align: middle; }
+    .draggable-item { cursor: grab; background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 5px; }
+    .draggable-item:active { cursor: grabbing; }
+    .drop-target { min-height: 50px; background-color: #e9e9e9; border: 2px dashed #ccc; } /* Visual for drop area */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+
+    {# Flashed messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <hr>
+    <h3>Manage Footer Icons</h3>
+
+    {# Form to Add New Icon #}
+    <div class="card mb-4">
+        <div class="card-header">Add New Footer Icon</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.add_footer_icon') }}" enctype="multipart/form-data">
+                {{ icon_form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ icon_form.name.label(class="form-label") }}
+                    {{ icon_form.name(class="form-control", placeholder="e.g., Twitter") }}
+                    {% for error in icon_form.name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ icon_form.click_url.label(class="form-label") }}
+                    {{ icon_form.click_url(class="form-control", placeholder="https://twitter.com/yourprofile") }}
+                    {% for error in icon_form.click_url.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                 <div class="mb-3">
+                    {{ icon_form.icon_file.label(class="form-label") }}
+                    {{ icon_form.icon_file(class="form-control") }}
+                    <small class="form-text text-muted">Upload a new PNG icon (e.g., myicon_ico.png). If not provided, you must select an unused icon below.</small>
+                    {% for error in icon_form.icon_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+
+                {% if unused_icons %}
+                <div class="mb-3">
+                    <label for="existing_icon_filename" class="form-label">Or Select an Unused Icon:</label>
+                    <select name="existing_icon_filename" id="existing_icon_filename" class="form-select">
+                        <option value="">-- Select Unused Icon --</option>
+                        {% for unused_fn in unused_icons %}
+                        <option value="{{ unused_fn }}">{{ unused_fn }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Icons found in <code>app/static/img/</code> ending with <code>_ico.png</code> that are not currently in use.</small>
+                </div>
+                {% else %}
+                <p>No unused icons found in <code>app/static/img/</code> folder or all are in use.</p>
+                {% endif %}
+
+                <div class="mb-3">
+                    {{ icon_form.order.label(class="form-label") }}
+                    {{ icon_form.order(class="form-control", type="number") }}
+                    {% for error in icon_form.order.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                {{ icon_form.submit(class="btn btn-primary") }}
+            </form>
+        </div>
+    </div>
+
+    {# List Existing Icons with Drag and Drop for Order #}
+    <h4>Current Icons (Drag to Reorder)</h4>
+    {% if icons %}
+        <form method="POST" action="{{ url_for('admin.update_icon_order') }}" id="reorderForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <ul id="sortableIcons" class="list-unstyled drop-target">
+                {% for icon in icons %}
+                <li class="draggable-item" data-id="{{ icon.id }}">
+                    <input type="hidden" name="icon_order[]" value="{{ icon.id }}">
+                    <img src="{{ icon.icon_url }}" alt="{{ icon.name }}" class="icon-preview">
+                    <strong>{{ icon.name }}</strong> (Order: {{ icon.order }}) - <a href="{{ icon.click_url }}" target="_blank">{{ icon.click_url }}</a>
+                    <a href="{{ url_for('admin.edit_footer_icon', icon_id=icon.id) }}" class="btn btn-sm btn-outline-secondary float-end ms-2">Edit</a>
+                    <form method="POST" action="{{ url_for('admin.delete_footer_icon', icon_id=icon.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this icon?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-outline-danger float-end">Delete</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            <button type="submit" class="btn btn-success mt-2">Save New Order</button>
+        </form>
+    {% else %}
+        <p>No footer icons added yet.</p>
+    {% endif %}
+
+    <hr class="my-4">
+
+    {# Form to Edit Copyright #}
+    <h3>Edit Copyright Message</h3>
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.manage_footer') }}"> {# Points to the same route, identified by button name #}
+                {{ copyright_form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ copyright_form.copyright_message.label(class="form-label") }}
+                    {{ copyright_form.copyright_message(class="form-control", rows="3") }}
+                    {% for error in copyright_form.copyright_message.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    <div id="copyrightHelp" class="form-text text-muted mt-2">
+                        <strong>Tips:</strong>
+                        <ul>
+                            <li>To include the current year automatically, type <code>{year}</code>. For example: <code>&amp;copy; {year} Your Company Name.</code></li>
+                            <li>You can use HTML entities like <code>&amp;copy;</code> for © or <code>&amp;reg;</code> for ®.</li>
+                            <li>Basic HTML tags like <code>&lt;strong&gt;</code> or <code>&lt;em&gt;</code> can be used if needed, but keep it simple.</li>
+                        </ul>
+                    </div>
+                </div>
+                <button type="submit" name="submit_copyright" class="btn btn-primary">Update Copyright</button>
+            </form>
+        </div>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-link mt-3">Back to Dashboard</a>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{# Simple Drag and Drop Sortable JS (Example using built-in HTML5 drag and drop) #}
+{# For a more robust solution, consider a library like SortableJS #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sortableList = document.getElementById('sortableIcons');
+    const reorderForm = document.getElementById('reorderForm');
+    let draggedItem = null;
+
+    if (sortableList) {
+        for (let item of sortableList.getElementsByTagName('li')) {
+            item.setAttribute('draggable', 'true');
+
+            item.addEventListener('dragstart', function (e) {
+                draggedItem = item;
+                setTimeout(() => item.style.display = 'none', 0); // Hide item but keep space
+                 e.dataTransfer.effectAllowed = 'move';
+                 e.dataTransfer.setData('text/plain', item.dataset.id); // For good measure
+            });
+
+            item.addEventListener('dragend', function () {
+                setTimeout(() => {
+                    draggedItem.style.display = ''; // Show item again
+                    draggedItem = null;
+                }, 0);
+                updateHiddenInputs(); // Update hidden inputs for form submission
+            });
+
+            item.addEventListener('dragover', function (e) {
+                e.preventDefault(); // Necessary to allow dropping
+                e.dataTransfer.dropEffect = 'move';
+                const targetItem = e.target.closest('li.draggable-item');
+                if (targetItem && targetItem !== draggedItem && sortableList.contains(targetItem)) {
+                    const rect = targetItem.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > .5;
+                    sortableList.insertBefore(draggedItem, next && targetItem.nextSibling || targetItem);
+                }
+            });
+        }
+    }
+
+    function updateHiddenInputs() {
+        if(sortableList && reorderForm) {
+            // Clear existing hidden inputs related to order inside the form
+            const existingInputs = reorderForm.querySelectorAll('input[name="icon_order[]"]');
+            existingInputs.forEach(input => input.remove());
+
+            // Add new hidden inputs based on the current order of li elements
+            const items = sortableList.getElementsByTagName('li');
+            for (let i = 0; i < items.length; i++) {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'icon_order[]';
+                hiddenInput.value = items[i].dataset.id;
+                reorderForm.appendChild(hiddenInput);
+            }
+        }
+    }
+    // Initial call in case the order is already set by backend and just needs hidden fields populated for a potential immediate save
+    if(reorderForm){
+       // The form already populates the hidden fields in the template. This client-side update
+       // is primarily for when the user *actually* drags and changes the order.
+    }
+});
+</script>
+{% endblock %}

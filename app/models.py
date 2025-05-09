@@ -43,3 +43,31 @@ class Post(db.Model):
 
     def __repr__(self):
         return f'<Post {self.title}>'
+
+class FooterIcon(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    icon_filename = db.Column(db.String(200), nullable=False) # e.g., 'facebook_ico.png'
+    click_url = db.Column(db.String(500), nullable=False)
+    order = db.Column(db.Integer, default=0) # For ordering
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<FooterIcon {self.name}>'
+
+    @property
+    def icon_url(self):
+        # Assuming your static folder for images is 'img' inside 'static'
+        # and icons are in 'app/static/img/'
+        from flask import url_for
+        return url_for('static', filename=f'img/{self.icon_filename}')
+
+class SiteConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False) # e.g., 'copyright_message'
+    value = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<SiteConfiguration {self.key}>'
+

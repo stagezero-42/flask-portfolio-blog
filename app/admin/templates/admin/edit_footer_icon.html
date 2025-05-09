@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+
+    {# Flashed messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('admin.edit_footer_icon', icon_id=icon_id) }}" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+            {% for error in form.name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.click_url.label(class="form-label") }}
+            {{ form.click_url(class="form-control") }}
+            {% for error in form.click_url.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        {# Current Icon Preview #}
+        <div class="mb-3">
+            <label class="form-label">Current Icon:</label><br>
+            {% if current_icon_filename %}
+                <img src="{{ url_for('static', filename='img/' + current_icon_filename) }}" alt="{{ form.name.data }}" style="width: 48px; height: 48px; margin-bottom: 10px; background-color: #eee; padding: 2px; border: 1px solid #ddd;">
+                <p><small>Filename: {{ current_icon_filename }}</small></p>
+            {% else %}
+                <p><small>No icon currently set.</small></p>
+            {% endif %}
+        </div>
+
+        {# Option to Upload New Icon #}
+        <div class="mb-3">
+            {{ form.icon_file.label(class="form-label") }} (Optional: Upload new to replace current)
+            {{ form.icon_file(class="form-control") }}
+            <small class="form-text text-muted">Upload a new PNG icon (e.g., myicon_ico.png) to change the current one.</small>
+            {% for error in form.icon_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        {# MODIFIED/ADDED: Option to Select Existing Unused Icon #}
+        {% if unused_icons or current_icon_filename %} {# Show dropdown if there are options or a current icon to re-select #}
+        <div class="mb-3">
+            <label for="existing_icon_filename" class="form-label">Or Select an Existing Icon:</label>
+            <select name="existing_icon_filename" id="existing_icon_filename" class="form-select">
+                <option value="">-- Do not change from current/uploaded --</option>
+                {# Add the current icon as an option if it exists, so it can be explicitly re-selected #}
+                {% if current_icon_filename %}
+                    <option value="{{ current_icon_filename }}" selected>{{ current_icon_filename }} (Current)</option>
+                {% endif %}
+                {# List other unused icons #}
+                {% for unused_fn in unused_icons %}
+                    {# Only list if it's not the current icon already listed above #}
+                    {% if unused_fn != current_icon_filename %}
+                        <option value="{{ unused_fn }}">{{ unused_fn }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <small class="form-text text-muted">
+                Choose from icons in <code>app/static/img/</code> ending with <code>_ico.png</code>.
+                Uploading a new icon above will take precedence over this selection.
+            </small>
+        </div>
+        {% else %}
+        <p>No other existing icons found in <code>app/static/img/</code> folder to select from.</p>
+        {% endif %}
+        {# END MODIFICATION #}
+
+         <div class="mb-3">
+            {{ form.order.label(class="form-label") }}
+            {{ form.order(class="form-control", type="number") }}
+            {% for error in form.order.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {{ form.submit(value='Update Icon', class="btn btn-primary") }} {# Changed button text for clarity #}
+        <a href="{{ url_for('admin.manage_footer') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

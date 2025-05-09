@@ -1,6 +1,8 @@
+# app/__init__.py
 from flask import Flask, render_template
 from .config import config
 from .extensions import db, migrate, csrf,  login_manager
+from datetime import datetime
 
 def create_app(config_name='default'):
     """
@@ -25,17 +27,48 @@ def create_app(config_name='default'):
     from .admin import admin as admin_blueprint
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
-    # from .auth import auth as auth_blueprint # If you have an auth blueprint
-    # app.register_blueprint(auth_blueprint, url_prefix='/auth')
+    # Context Processor for Footer Data
+    @app.context_processor
+    def inject_footer_data():
+        # It's crucial to import models *inside* the function or ensure the app context
+        # is fully active, especially if models themselves might import things that need the app.
+        # For simplicity and to avoid circular import issues, importing here is often safest.
+        from .models import FooterIcon, SiteConfiguration
 
-    # Optional: Register a simple route for testing
-    # @app.route('/hello')
-    # def hello():
-    #    return "Hello, World from App Factory!"
+        footer_icons_list = []
+        copyright_message_text = None
+        current_year_val = datetime.utcnow().year
+
+        try:
+            # These database queries require an active application context and
+            # for the database to be initialized. This is generally fine when requests
+            # are being processed, but be mindful during initial `flask db init` or similar commands.
+            footer_icons_list = FooterIcon.query.order_by(FooterIcon.order).all()
+            copyright_config = SiteConfiguration.query.filter_by(key='copyright_message').first()
+            if copyright_config:
+                copyright_message_text = copyright_config.value
+        except Exception as e:
+            # Log a warning if data can't be fetched, which might happen during initial setup
+            # before the database tables are created, or if the DB is temporarily unavailable.
+            app.logger.warning(f"Could not load footer data from DB for context processor: {e}. "
+                               "This might be normal during initial setup or migrations.")
+            # Fallback values will be used if an error occurs
+
+        # Provide a sensible default for the copyright message if not found in the database
+        if copyright_message_text is None:
+            copyright_message_text = f"&copy; {current_year_val} Your Company Name. All Rights Reserved."
+        elif "{year}" in copyright_message_text: # Allow dynamic year replacement
+            copyright_message_text = copyright_message_text.replace("{year}", str(current_year_val))
+
+        return dict(
+            footer_icons=footer_icons_list,
+            copyright_message=copyright_message_text,
+            current_year=current_year_val # You already have a current_year block, so this might be redundant
+                                          # or you can rename it to avoid conflict, e.g., `footer_current_year`
+        )
 
     # Register custom error handlers
     register_error_handlers(app)
-
     return app
 
 def register_error_handlers(app):

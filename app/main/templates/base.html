@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Flask App{% endblock %}</title>
+     {# INE FOR THE FAVICON #}
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     {# Your existing CSS #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {# Bootstrap 5 CSS (example) - MAKE SURE THIS IS COMPATIBLE WITH JS VERSION #}
@@ -50,7 +52,28 @@
     </main>
 
     <footer>
-        <p>&copy; {% block current_year %}{{ current_year if current_year else '2025' }}{% endblock %} Your Name. All rights reserved.</p>
+        <div class="container text-center py-3"> {# Added Bootstrap padding class py-3 for vertical spacing #}
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                {# Icons on the left (or center on small screens) #}
+                <div class="footer-icons mb-2 mb-md-0">
+                    {% if footer_icons %}
+                        {% for icon in footer_icons %}
+                            <a href="{{ icon.click_url }}" target="_blank" rel="noopener noreferrer" title="{{ icon.name }}" style="margin: 0 8px; display: inline-block;">
+                                <img src="{{ icon.icon_url }}" alt="{{ icon.name }}" style="height: 24px; width: 24px; vertical-align: middle;">
+                            </a>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                {# Copyright message on the right (or center/below on small screens) #}
+                {# The copyright_message from the context processor should now be used directly. #}
+                {# The |safe filter is used because the copyright message might contain HTML entities like &copy; #}
+                {# or if you intend to store basic HTML in the SiteConfiguration value. #}
+                <div class="copyright-text">
+                     <p class="mb-0" style="font-size: 0.9em; color: #ccc;">{{ copyright_message | safe }}</p>
+                </div>
+            </div>
+        </div>
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

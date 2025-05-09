@@ -59,9 +59,28 @@ nav a {
 footer {
     text-align: center;
     padding: 20px;
-    background: #333;
-    color: #fff;
+    background: #000000;
+    color: #ffffff;
     margin-top: 20px;
+}
+
+footer .container {
+    background-color: transparent !important; /* Ensure container inside footer has no conflicting background */
+
+footer a {
+    color: #abcdef; /* Example: a light blue for links, choose what fits your design */
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+/* If you used <p> tag for copyright in base.html, ensure its margin is suitable or reset */
+footer .copyright-text p {
+    margin-bottom: 0; /* Removes default bottom margin from paragraph if it's inside the flex container */
+    color: #f0f0f0; /* Slightly off-white for the copyright text for better readability than pure white */
 }
 
 .alert {

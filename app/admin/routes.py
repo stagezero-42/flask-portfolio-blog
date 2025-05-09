@@ -3,8 +3,8 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename  # For securing filenames
 from . import admin  # Import the blueprint
-from .forms import LoginForm, PostForm
-from app.models import User, Post, db
+from .forms import LoginForm, PostForm, FooterIconForm, CopyrightForm
+from app.models import User, Post, db, FooterIcon, SiteConfiguration
 from app import db, csrf  # Import csrf
 from PIL import Image # For thumbnail generation
 from bs4 import BeautifulSoup # For parsing HTML content
@@ -367,3 +367,227 @@ def upload_trix_attachment():
         return jsonify({'url': file_url}), 200
 
     return jsonify({'error': 'File type not allowed.'}), 400
+
+# --- Footer Icon Management ---
+@admin.route('/manage_footer', methods=['GET', 'POST'])
+@login_required
+def manage_footer():
+    icon_form = FooterIconForm()
+    copyright_form = CopyrightForm()
+
+    # Handle Copyright Update
+    if copyright_form.validate_on_submit() and 'submit_copyright' in request.form:
+        config_entry = SiteConfiguration.query.filter_by(key='copyright_message').first()
+        if not config_entry:
+            config_entry = SiteConfiguration(key='copyright_message')
+            db.session.add(config_entry)
+        config_entry.value = copyright_form.copyright_message.data
+        try:
+            db.session.commit()
+            flash('Copyright message updated successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating copyright: {str(e)}', 'danger')
+        return redirect(url_for('admin.manage_footer'))
+
+    # Pre-fill copyright form
+    current_copyright = SiteConfiguration.query.filter_by(key='copyright_message').first()
+    if current_copyright and request.method == 'GET': # Populate only on GET
+        copyright_form.copyright_message.data = current_copyright.value
+
+    icons = FooterIcon.query.order_by(FooterIcon.order).all()
+
+    # Logic to find unused icons in app/static/img/
+    img_folder = os.path.join(current_app.static_folder, 'img')
+    if not os.path.exists(img_folder):
+        os.makedirs(img_folder) # Create if it doesn't exist
+
+    try:
+        all_pngs_in_folder = [f for f in os.listdir(img_folder) if f.lower().endswith('_ico.png')]
+    except FileNotFoundError:
+        all_pngs_in_folder = []
+
+    used_icon_filenames = [icon.icon_filename for icon in icons]
+    unused_icons = [f for f in all_pngs_in_folder if f not in used_icon_filenames]
+
+    return render_template('admin/manage_footer.html',
+                           title='Manage Footer',
+                           icon_form=icon_form,
+                           copyright_form=copyright_form,
+                           icons=icons,
+                           unused_icons=unused_icons)
+
+
+@admin.route('/add_footer_icon', methods=['POST'])
+@login_required
+def add_footer_icon():
+    form = FooterIconForm()
+    if form.validate_on_submit():
+        filename = None
+        if form.icon_file.data:
+            try:
+                f = form.icon_file.data
+                filename = secure_filename(f.filename)
+                if not filename.endswith('_ico.png'):
+                    flash('Icon filename must end with "_ico.png".', 'warning')
+                    return redirect(url_for('admin.manage_footer'))
+
+                img_folder = os.path.join(current_app.static_folder, 'img')
+                if not os.path.exists(img_folder): # Ensure img folder exists
+                    os.makedirs(img_folder)
+                f.save(os.path.join(img_folder, filename))
+            except Exception as e:
+                flash(f'Error uploading icon: {str(e)}', 'danger')
+                return redirect(url_for('admin.manage_footer'))
+        else:
+            # Check if user selected an existing unused icon
+            selected_unused_icon = request.form.get('existing_icon_filename')
+            if selected_unused_icon:
+                 filename = selected_unused_icon
+            else:
+                flash('You must upload a new icon or select an unused one.', 'danger')
+                return redirect(url_for('admin.manage_footer'))
+
+
+        if filename: # Proceed only if a filename is set (either uploaded or selected)
+            new_icon = FooterIcon(
+                name=form.name.data,
+                icon_filename=filename,
+                click_url=form.click_url.data,
+                order=form.order.data
+            )
+            try:
+                db.session.add(new_icon)
+                db.session.commit()
+                flash('Footer icon added successfully.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error adding icon: {str(e)}', 'danger')
+    else:
+        # Collect and flash form errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error in {getattr(form, field).label.text}: {error}", 'danger')
+    return redirect(url_for('admin.manage_footer'))
+
+
+@admin.route('/edit_footer_icon/<int:icon_id>', methods=['GET', 'POST'])
+@login_required
+def edit_footer_icon(icon_id):
+    icon = FooterIcon.query.get_or_404(icon_id)
+    form = FooterIconForm(obj=icon) # Pre-populate form with existing icon data
+
+    # Logic to find unused icons in app/static/img/
+    img_folder = os.path.join(current_app.static_folder, 'img')
+    unused_icons_filenames = []
+    if os.path.exists(img_folder):
+        try:
+            all_pngs_in_folder = [f for f in os.listdir(img_folder) if f.lower().endswith('_ico.png')]
+            # Get all currently used icon filenames except the one being edited
+            # if we decide to change its icon_filename to an existing unused one.
+            used_icon_filenames = [
+                i.icon_filename for i in FooterIcon.query.filter(FooterIcon.id != icon_id).all()
+            ]
+            # An icon is unused if it's in the folder but not in the list of other used icons.
+            # The current icon for this item (icon.icon_filename) can also be in this list if the user
+            # wants to re-select it or if it's a candidate for another icon.
+            unused_icons_filenames = [f for f in all_pngs_in_folder if f not in used_icon_filenames]
+        except FileNotFoundError:
+            pass # Folder might not exist, unused_icons_filenames remains empty
+
+    if form.validate_on_submit():
+        icon.name = form.name.data
+        icon.click_url = form.click_url.data
+        icon.order = form.order.data
+
+        new_icon_filename_chosen = False
+
+        # Option 1: Uploading a new file takes precedence
+        if form.icon_file.data:
+            try:
+                f = form.icon_file.data
+                filename = secure_filename(f.filename)
+                if not filename.endswith('_ico.png'):
+                    flash('Icon filename must end with "_ico.png".', 'warning')
+                    # Pass unused_icons_filenames to the template again on error
+                    return render_template('admin/edit_footer_icon.html', title='Edit Footer Icon', form=form, icon_id=icon.id, current_icon_filename=icon.icon_filename, unused_icons=unused_icons_filenames)
+
+                img_path = os.path.join(current_app.static_folder, 'img', filename)
+                f.save(img_path)
+                icon.icon_filename = filename # Update filename in DB
+                new_icon_filename_chosen = True
+                flash('New icon image uploaded and updated successfully.', 'info')
+            except Exception as e:
+                flash(f'Error uploading new icon: {str(e)}', 'danger')
+                # Pass unused_icons_filenames to the template again on error
+                return render_template('admin/edit_footer_icon.html', title='Edit Footer Icon', form=form, icon_id=icon.id, current_icon_filename=icon.icon_filename, unused_icons=unused_icons_filenames)
+        else:
+            # Option 2: User selected an existing unused icon from the dropdown
+            selected_existing_icon = request.form.get('existing_icon_filename')
+            if selected_existing_icon and selected_existing_icon != icon.icon_filename:
+                # Check if this selected icon name is valid (exists in the unused_icons_filenames list or is the current one)
+                if selected_existing_icon in unused_icons_filenames or selected_existing_icon == icon.icon_filename :
+                    icon.icon_filename = selected_existing_icon
+                    new_icon_filename_chosen = True
+                    flash('Icon image changed to selected existing icon.', 'info')
+                else:
+                    flash('Invalid selection for existing icon.', 'danger')
+            elif selected_existing_icon and selected_existing_icon == icon.icon_filename:
+                # User selected the same icon, no change needed, but not an error
+                pass
+
+        # If no new file uploaded and no different existing icon selected, icon.icon_filename remains unchanged.
+        try:
+            db.session.commit()
+            flash('Footer icon updated successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating icon: {str(e)}', 'danger')
+        return redirect(url_for('admin.manage_footer'))
+
+    # On GET request or if form validation fails, pass the list of unused icons to the template
+    return render_template('admin/edit_footer_icon.html',
+                           title='Edit Footer Icon',
+                           form=form,
+                           icon_id=icon.id,
+                           current_icon_filename=icon.icon_filename,
+                           unused_icons=unused_icons_filenames) # Pass this to the template
+
+@admin.route('/delete_footer_icon/<int:icon_id>', methods=['POST'])
+@login_required
+def delete_footer_icon(icon_id):
+    icon = FooterIcon.query.get_or_404(icon_id)
+    try:
+        # Optional: Delete the actual icon file from app/static/img/
+        # Be cautious if multiple DB entries could point to the same file.
+        # img_path = os.path.join(current_app.static_folder, 'img', icon.icon_filename)
+        # if os.path.exists(img_path):
+        #     os.remove(img_path)
+
+        db.session.delete(icon)
+        db.session.commit()
+        flash('Footer icon deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting icon: {str(e)}', 'danger')
+    return redirect(url_for('admin.manage_footer'))
+
+@admin.route('/update_icon_order', methods=['POST'])
+@login_required
+def update_icon_order():
+    order_data = request.form.getlist('icon_order[]') # Expecting a list of icon IDs in the new order
+    try:
+        for index, icon_id_str in enumerate(order_data):
+            icon_id = int(icon_id_str)
+            icon = FooterIcon.query.get(icon_id)
+            if icon:
+                icon.order = index
+        db.session.commit()
+        flash('Icon order updated successfully.', 'success')
+    except ValueError:
+        flash('Invalid icon ID received for ordering.', 'danger')
+        db.session.rollback()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating icon order: {str(e)}', 'danger')
+    return redirect(url_for('admin.manage_footer'))
