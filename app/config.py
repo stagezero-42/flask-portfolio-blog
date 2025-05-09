@@ -7,7 +7,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 load_dotenv(os.path.join(project_root, '.env'))
 
 class Config:
-    """Base configuration class. Contains default configuration."""
+    """remove 'or 'you-should-really-change-this' when putting into production """
+
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-should-really-change-this'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Define a default database URI if DATABASE_URL is not set (e.g., for SQLite in instance folder)
