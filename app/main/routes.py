@@ -135,7 +135,7 @@ def portfolio():
     page = request.args.get('page', 1, type=int)
     portfolio_posts_pagination = Post.query.filter_by(category='portfolio') \
         .order_by(Post.created_at.desc()) \
-        .paginate(page=page, per_page=10)
+        .paginate(page=page, per_page=5)
 
     items_with_details = []
     # current_app.logger.debug("--- Debugging Portfolio Items ---")  # Log separator
@@ -159,13 +159,31 @@ def portfolio():
                            items_pagination=portfolio_posts_pagination,
                            items_with_details=items_with_details)
 
+
 @main.route('/blog')
 def blog():
     page = request.args.get('page', 1, type=int)
-    blog_posts = Post.query.filter_by(category='blog')\
-                           .order_by(Post.created_at.desc())\
-                           .paginate(page=page, per_page=5)
-    return render_template('main/blog.html', title='My Blog', posts=blog_posts)
+    # You can make items_per_page configurable or keep it fixed
+    items_per_page_blog = current_app.config.get('BLOG_ITEMS_PER_PAGE', 5)
+
+    blog_posts_pagination = Post.query.filter_by(category='blog') \
+        .order_by(Post.created_at.desc()) \
+        .paginate(page=page, per_page=items_per_page_blog)  # Consistent pagination object
+
+    items_with_details = []
+    for post_item in blog_posts_pagination.items:
+        # Use the same excerpt function as portfolio
+        excerpt_text = get_text_excerpt(post_item.content, 2)  # Adjust num_sentences if needed
+        items_with_details.append({
+            'post': post_item,
+            'excerpt': excerpt_text
+            # thumbnail_url is already part of post_item if it exists (post_item.thumbnail_url)
+        })
+
+    return render_template('main/blog.html',
+                           title='My Blog',
+                           items_pagination=blog_posts_pagination,  # Pass the pagination object
+                           items_with_details=items_with_details)  # Pass the detailed items
 
 @main.route('/post/<int:post_id>')
 def view_post(post_id):

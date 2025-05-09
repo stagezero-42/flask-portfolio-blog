@@ -2,28 +2,126 @@
 
 {% block title %}{{ title }} - {{ super() }}{% endblock %}
 
+{% block head_extra %}
+{# You can reuse or adapt styles from portfolio.html if they are suitable #}
+<style>
+    .blog-entry { /* Changed from portfolio-entry for potential distinct styling */
+        display: flex;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #eee;
+    }
+    .blog-thumbnail-container { /* Changed from portfolio-thumbnail-container */
+        flex-shrink: 0;
+        margin-right: 15px;
+        width: 150px; /* Adjust as needed */
+    }
+    .blog-thumbnail-container img {
+        width: 100%;
+        height: auto;
+        max-height: 120px; /* Adjust this to match your desired visual balance */
+        object-fit: cover;
+        border: 1px solid #ddd;
+    }
+    .blog-content { /* Changed from portfolio-content */
+        flex-grow: 1;
+    }
+
+    .blog-title-line { /* Changed from portfolio-title-line */
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        margin-bottom: 0.5em;
+    }
+
+     .blog-content h2 {
+        font-size: 1.2em; /* Slightly larger for blog titles maybe */
+        margin-top: 0;
+        margin-bottom: 0;
+        margin-right: 10px;
+        font-weight: bold;
+    }
+
+    .blog-content h2 a {
+        text-decoration: none;
+        font-weight: bold;
+        color: #0056b3;
+    }
+
+    .blog-content h2 a:hover {
+        color: #007bff;
+    }
+
+    .blog-date { /* Changed from portfolio-date */
+        font-size: 0.85em;
+        color: #777;
+        white-space: nowrap;
+    }
+    .blog-excerpt { /* Changed from portfolio-excerpt */
+        font-size: 0.9em;
+        color: #555;
+        line-height: 1.5;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <h1>{{ title }}</h1>
-    {% if posts and posts.items %} {# Adjust if not using pagination, then just 'if posts' #}
-        {% for post in posts.items %} {# posts.items with pagination #}
-            <article>
-                <h2>{{ post.title }}</h2>
-                <p><small>Posted on: {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
-                {# Display full content or an excerpt #}
-                <div>{{ post.content | safe }}</div> {# Use |safe if content contains HTML you trust #}
-                {# <a href="#">Read more...</a> {# You might link to a full post view later #}
-            </article>
-            <hr>
-        {% endfor %}
+    {% if items_with_details %}
+        <div class="blog-list"> {# Changed from portfolio-grid for clarity #}
+            {% for item_detail in items_with_details %}
+                <article class="blog-entry">
+                    {% if item_detail.post.thumbnail_url %}
+                        <div class="blog-thumbnail-container">
+                            <a href="{{ url_for('main.view_post', post_id=item_detail.post.id) }}">
+                                <img src="{{ item_detail.post.thumbnail_url }}" alt="{{ item_detail.post.title }} thumbnail">
+                            </a>
+                        </div>
+                    {% endif %} {# No placeholder needed if you prefer cleaner look without one #}
+
+                    <div class="blog-content">
+                        <div class="blog-title-line">
+                            <h2><a href="{{ url_for('main.view_post', post_id=item_detail.post.id) }}">{{ item_detail.post.title }}</a></h2>
+                            <span class="blog-date">{{ item_detail.post.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        <div class="blog-excerpt">
+                            {{ item_detail.excerpt }} {# Display the generated excerpt #}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        {# Pagination links - styled like portfolio.html #}
+        {% if items_pagination and (items_pagination.has_prev or items_pagination.has_next) %}
+        <nav aria-label="Blog posts navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not items_pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.blog', page=items_pagination.prev_num if items_pagination.has_prev else 1) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% for page_num in items_pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                        {% if items_pagination.page == page_num %}
+                        <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('main.blog', page=page_num) }}">{{ page_num }}</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not items_pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.blog', page=items_pagination.next_num if items_pagination.has_next else items_pagination.pages) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+
     {% else %}
         <p>No blog posts yet. Check back soon!</p>
-    {% endif %}
-
-    {# Pagination links (optional, but good for many posts) #}
-    {% if posts and posts.has_prev %}
-        <a href="{{ url_for('main.blog', page=posts.prev_num) }}">&laquo; Newer posts</a>
-    {% endif %}
-    {% if posts and posts.has_next %}
-        <a href="{{ url_for('main.blog', page=posts.next_num) }}">Older posts &raquo;</a>
     {% endif %}
 {% endblock %}
