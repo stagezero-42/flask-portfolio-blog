@@ -18,6 +18,13 @@ body {
 .trix-content .image-file-info {
     display: none;
 }
+
+/* Add this rule to hide Trix attachment captions globally */
+figure figcaption.attachment__caption,
+figcaption.attachment__caption {
+    display: none !important; /* Hides the caption */
+}
+
 .container {
     width: 80%;
     margin: auto;
