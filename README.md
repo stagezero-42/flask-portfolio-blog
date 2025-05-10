@@ -56,40 +56,40 @@ This project is a dynamic portfolio and blog application built with Flask, SQLAl
 * **Pagination**: For blog and portfolio listings.
 
 ## Project Structure
-'''
-flask-portfolio-blog/
-    ├── app/                      # Main application package
-    │   ├── init.py              # Application factory
-    │   ├── admin/                # Admin blueprint (routes, forms, templates)
-    │   │   ├── init.py
-    │   │   ├── forms.py
-    │   │   ├── routes.py
-    │   │   └── templates/
-    │   ├── main/                 # Main site blueprint (routes, templates)
-    │   │   ├── init.py
-    │   │   ├── routes.py
-    │   │   └── templates/
-    │   ├── static/               # Static files (CSS, JS, images, uploaded media)
-    │   │   ├── css/
-    │   │   ├── img/              # For footer icons
-    │   │   ├── js/
-    │   │   └── media_files/      # For Trix editor uploads
-    │   ├── templates/            # Base and error templates
-    │   │   ├── errors/
-    │   │   └── base.html
-    │   ├── config.py             # Configuration classes (Dev, Prod, Test)
-    │   ├── extensions.py         # Flask extension initializations (db, migrate, etc.)
-    │   └── models.py             # SQLAlchemy database models
-    ├── migrations/               # Flask-Migrate migration scripts
-    ├── instance/                 # Instance folder (for SQLite DB, sensitive configs - gitignored)
-    │   └── app.db                # SQLite database file (for local dev)
-    ├── .env                      # Environment variables (gitignored)
-    ├── .flaskenv                 # Flask environment variables (e.g., FLASK_APP, FLASK_DEBUG)
-    ├── .gitignore
-    ├── requirements.txt          # Python dependencies
-    ├── run.py                    # Script to run the application
-    └── README.md
-    '''
+
+      flask-portfolio-blog/
+          ├── app/                      # Main application package
+          │   ├── init.py               # Application factory
+          │   ├── admin/                # Admin blueprint (routes, forms, templates)
+          │   │   ├── init.py
+          │   │   ├── forms.py
+          │   │   ├── routes.py
+          │   │   └── templates/
+          │   ├── main/                 # Main site blueprint (routes, templates)
+          │   │   ├── init.py
+          │   │   ├── routes.py
+          │   │   └── templates/
+          │   ├── static/               # Static files (CSS, JS, images, uploaded media)
+          │   │   ├── css/
+          │   │   ├── img/              # For footer icons
+          │   │   ├── js/
+          │   │   └── media_files/      # For Trix editor uploads
+          │   ├── templates/            # Base and error templates
+          │   │   ├── errors/
+          │   │   └── base.html
+          │   ├── config.py             # Configuration classes (Dev, Prod, Test)
+          │   ├── extensions.py         # Flask extension initializations (db, migrate, etc.)
+          │   └── models.py             # SQLAlchemy database models
+          ├── migrations/               # Flask-Migrate migration scripts
+          ├── instance/                 # Instance folder (for SQLite DB, sensitive configs - gitignored)
+          │   └── app.db                # SQLite database file (for local dev)
+          ├── .env                      # Environment variables (gitignored)
+          ├── .flaskenv                 # Flask environment variables (e.g., FLASK_APP, FLASK_DEBUG)
+          ├── .gitignore
+          ├── requirements.txt          # Python dependencies
+          ├── run.py                    # Script to run the application
+          └── README.md
+
 
 
 ## Local Development Setup
