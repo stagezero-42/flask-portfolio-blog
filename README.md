@@ -56,7 +56,7 @@ This project is a dynamic portfolio and blog application built with Flask, SQLAl
 * **Pagination**: For blog and portfolio listings.
 
 ## Project Structure
-
+'''
 flask-portfolio-blog/
     ├── app/                      # Main application package
     │   ├── init.py              # Application factory
@@ -88,7 +88,8 @@ flask-portfolio-blog/
     ├── .gitignore
     ├── requirements.txt          # Python dependencies
     ├── run.py                    # Script to run the application
-    └── README.md`
+    └── README.md
+    '''
 
 
 ## Local Development Setup
