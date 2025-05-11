@@ -3,6 +3,7 @@ from flask import Flask, render_template
 from .config import config
 from .extensions import db, migrate, csrf,  login_manager
 from datetime import datetime
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 def create_app(config_name='default'):
     """
@@ -10,6 +11,12 @@ def create_app(config_name='default'):
     Initializes and configures the Flask application.
     """
     app = Flask(__name__, instance_relative_config=True)
+
+    # Apply ProxyFix: Trust headers from one hop (Caddy)
+    # x_proto=1 tells Flask to trust the X-Forwarded-Proto header (e.g., 'https')
+    # x_host=1 tells Flask to trust the X-Forwarded-Host header (e.g., 'serenity.stagezero.com.au')
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+
     app.config.from_object(config[config_name])
     config[config_name].init_app(app) # Call static init_app if defined in Config
 
